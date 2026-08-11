@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────
+
+enum AdminRole {
+  SUPERADMIN
+  ADMIN
+}
+
+enum InquiryStatus {
+  NUEVO
+  CONTACTADO
+  EN_NEGOCIACION
+  CONFIRMADO
+  COMPLETADO
+  DESCARTADO
+}
+
+enum InquiryOrigin {
+  LANDING
+  WHATSAPP
+  REDES
+  REFERIDO
+  OTRO
+}
+
+// ─── AdminUser ──────────────────────────────────────────────────────────
+// Only authenticated users in the system. No client registration exists.
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  nombre       String
+  email        String    @unique
+  passwordHash String
+  rol          AdminRole @default(ADMIN)
+  activo       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([email])
+  @@index([rol])
+}
+
+// ─── Service ─────────────────────────────────────────────────────────────
+
+model Service {
+  id          String   @id @default(cuid())
+  nombre      String
+  descripcion String
+  categoria   String
+  precio      Float
+  imagenUrl   String?
+  activo      Boolean  @default(true)
+  orden       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  inquiries   Inquiry[]
+  testimonials Testimonial[]
+
+  @@index([categoria])
+  @@index([activo])
+  @@index([orden])
+}
+
+// ─── Inquiry ─────────────────────────────────────────────────────────────
+// A consultation request submitted by a client from the landing page.
+// No account is created — this is the core client-facing flow.
+
+model Inquiry {
+  id               String        @id @default(cuid())
+  nombreCliente    String
+  telefono         String
+  email            String?
+  servicioInteresId String?
+  motivoConsulta   String
+  estado           InquiryStatus @default(NUEVO)
+  notasInternas    String?
+  origen           InquiryOrigin  @default(LANDING)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  servicioInteres Service? @relation(fields: [servicioInteresId], references: [id], onDelete: SetNull)
+
+  @@index([estado])
+  @@index([createdAt])
+  @@index([origen])
+  @@index([servicioInteresId])
+}
+
+// ─── Testimonial ─────────────────────────────────────────────────────────
+// Created/managed exclusively by the admin (no client accounts to link to).
+
+model Testimonial {
+  id          String   @id @default(cuid())
+  nombre      String
+  servicioId  String?
+  calificacion Int
+  comentario  String
+  aprobado    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  servicio Service? @relation(fields: [servicioId], references: [id], onDelete: SetNull)
+
+  @@index([aprobado])
+  @@index([servicioId])
+}
+
+// ─── ContactMessage ──────────────────────────────────────────────────────
+// Generic contact form submissions (separate from service inquiries).
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  nombre    String
+  email     String
+  telefono  String?
+  mensaje   String
+  atendido  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([atendido])
+  @@index([createdAt])
+}
