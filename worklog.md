@@ -142,3 +142,21 @@ Work Log:
 Stage Summary:
 - Unified modern light-theme admin UI consistent across all 6 pages + login
 - No API/logic changes; all CRUD flows intact
+
+---
+Task ID: 9
+Agent: Main
+Task: Make up.sh work when the configured port is already allocated
+
+Work Log:
+- Reproduced failure on Windows/Git Bash: `Bind for 0.0.0.0:3000 failed: port is already allocated` (another project publishes 3000)
+- Rewrote up.sh with helpers to read/write .env, detect ports used by other containers or localhost listeners, and verify that Compose actually published APP_PORT
+- On conflict (or a container started without a published port), up.sh now picks the next free port, exports APP_PORT and persists it in .env, then retries up to 10 times
+- wait_healthy now dumps the last 100 log lines on timeout
+- Detected a second Windows-specific failure: `localhost:3001` was being served by the WSL jtools Vite dev server while `127.0.0.1:3001` served this app. Added checks for listeners on ::1 and a curl check that `localhost` really returns the app API, so those ports are skipped too (3001 -> 3003)
+- Verified end to end: both services healthy, API 200 and landing title "Retornos y Amarres" at both http://localhost:3003 and http://127.0.0.1:3003; second run reused 3003 without switching
+- Updated README Docker section to document automatic port fallback and WSL localhost interception
+
+Stage Summary:
+- up.sh is resilient to host port conflicts and WSL localhost hijacking, and safe to re-run
+- App reachable at the printed URL without manual .env editing
